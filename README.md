@@ -1,93 +1,152 @@
-# 🌳 CHAID Decision Tree Model for Terrain & Environmental Classification
+🌳 CHAID Decision Tree Model on MODIS NDVI Dataset
 
-This project implements a CHAID (Chi-square Automatic Interaction Detector) decision tree model to classify terrain types using complex geospatial, environmental, and vegetation-based data. The workflow includes end-to-end data preprocessing, flattening nested JSON structures, feature transformation, model training, and interpretability using CHAID-based rules.
+A complete implementation of CHAID classification using satellite-derived vegetation indices
 
-**## 📌 Project Overview**
-This repository demonstrates how to build an interpretable rule-based classification system using the CHAID algorithm, which performs multi-level chi-square-driven splitting. The dataset includes environmental layers such as:
-Vegetation indicators (NDVI, EVI, spectral means)
-Land Surface Temperature
-Soil characteristics
-Weather attributes
-Topography (elevation, slope, terrain roughness)
-The goal is to transform raw satellite-derived JSON data into a structured tabular format and use CHAID to create a clear, transparent classification tree.
-**1. Data Preprocessing**
-     The project includes several preprocessing stages:
-     Parsing complex JSON structures
-     Extracting nested fields for vegetation, weather, soil, and topography
-     Converting lists and multi-dimensional arrays into usable feature columns
-     Cleaning & Feature Engineering
-     Handling missing values
-     Converting categorical fields to strings (required by CHAID)
-     Creating features such as:
-     slope_mean
-     elevation_mean
-     terrain_type
-     soil_categories
-     Normalized vegetation indicators
-     Label Preparation
-Encoding the terrain category as the target label
-Balancing the dataset where possible
-**2. CHAID Model Training**
-This project uses a pure-Python CHAID implementation to:
- Build a decision tree using chi-square significance
- Perform multi-level categorical splitting
- Identify most significant predictor variables 
- Generate easy-to-interpret rule-based outputs
-** 3. Model Results & Observations**
-CHAID selected meaningful, statistically significant predictors
-The model primarily split on environmental variables such as:
-Vegetation indices
-Elevation ranges
-Slope values
-Soil and terrain descriptors
-     Clear rule-based decision structure
+📌 Project Overview
 
-The resulting CHAID tree produced readable branches like:
+This project demonstrates how to build a CHAID (Chi-square Automatic Interaction Detection) decision-tree classifier using MODIS satellite NDVI data.
+The workflow includes:
 
-IF elevation_mean > threshold
-   AND soil_type = X
-      THEN terrain_type = Mountain
+Extracting reflectance and NDVI values from JSON (response.json)
 
-✔ Better interpretability than standard decision trees
+Categorizing NDVI values into discrete bins (value_cat)
 
-CHAID handled categorical splitting more naturally and reduced unnecessary branches.
+Defining vegetation health classes (NDVI_class)
 
-✔ Data imbalance impacted model depth
+Training a CHAID model using the pandas-CHAID library
 
-Some terrain categories had fewer samples, limiting deeper splits.
+Interpreting the CHAID split results
 
-## 🧪 4. Key Evaluation Metrics
-CHAID tree summary printed directly from the model
-Class distribution at each node
-Significant split p-values
-Tree depth and number of branches
-These results help understand why the model made certain decisions.
+Creating visualizations for deeper insight
 
-## 📁 5. Repository Structure
-📦 CHAID-Model-Project
- ┣ 📜 CHAID_model.ipynb          # Main notebook with full pipeline
- ┣ 📜 sample_data.json           # Example raw dataset (nested JSON)
- ┣ 📜 README.md                  # Project documentation
- ┗ 📂 outputs/
-     ┗ 📜 chaid_tree_summary.txt # Generated CHAID tree summary
+This repository also includes the finalized Jupyter Notebook:
+📄 Final_chaid_Model.ipynb
 
-## 🚀 6. How to Run
-Install dependencies
-pip install pandas numpy chaid matplotlib
+📂 Dataset
 
-Run the notebook
-jupyter notebook CHAID_model.ipynb
+The dataset originates from MODIS (MOD13Q1) satellite collection and includes:
 
-## 🔍 7. What I Observed
+NDVI values
 
-CHAID successfully handled categorical logic and produced explainable splits.
+Reflectance bands (Red, NIR, Blue, MIR)
 
-Only a few features dominated the classification (vegetation + elevation + slope).
+Quality and reliability flags
 
-Data sparsity and imbalance reduced overall model accuracy.
+Time-stamped 9×9 pixel grids
 
-Despite limitations, the resulting tree provided strong interpretability and clarity.
+From this, a flattened tabular dataset was created for CHAID modeling.
 
-## 🏁 8. Conclusion
+🔧 Preprocessing Steps
 
-This project demonstrates how CHAID can be used to interpret complex environmental datasets and generate fully transparent decision-making logic. It is especially useful in applications where explainability matters—such as terrain classification, environmental monitoring, and geospatial decision systems.
+Load the JSON dataset
+
+Extract NDVI values from MODIS "subset" blocks
+
+Convert raw NDVI values into categorical bins:
+
+df["value_cat"] = pd.qcut(df["value"], q=4, labels=["Low", "Medium", "High", "Very High"])
+
+
+Map NDVI values to vegetation health classes:
+
+df["NDVI_class"] = pd.cut(
+    df["value"], 
+    bins=[0, 1000, 2000, 3000, 4000],
+    labels=["Poor", "Moderate", "Good", "Excellent"]
+)
+
+🤖 CHAID Model Implementation
+
+The model uses the pandas-CHAID library:
+
+from CHAID import Tree
+
+tree = Tree.from_pandas_df(
+    df, 
+    {'value_cat': 'nominal'}, 
+    "NDVI_class"
+)
+
+tree.print_tree()
+
+🌳 CHAID Tree Output
+
+The final CHAID tree identified value_cat as the only significant predictor of NDVI_class.
+
+([], {'Poor': 1024, 'Good': 96, 'Moderate': 882, 'Excellent': 264, 'missing': 240})
+|-- (['High'], {...}, <Invalid Chaid Split>)
+|-- (['Low'], {...}, <Invalid Chaid Split>)
+|-- (['Medium'], {...}, <Invalid Chaid Split>)
++-- (['Very High'], {...}, <Invalid Chaid Split>)
+
+✔ Interpretation
+
+The model created four terminal nodes, one for each NDVI category.
+
+No further splits were possible (as expected with a single predictor).
+
+Each category maps to distinct vegetation health distributions.
+
+This validates the strong relationship between NDVI value ranges and vegetation condition.
+
+📊 Visualizations
+
+The notebook includes the following visuals:
+
+1. NDVI Category Distribution
+
+Bar chart showing counts of each NDVI bin.
+
+2. NDVI Category vs Vegetation Class (Heatmap)
+
+A chi-square style visualization showing how CHAID relates the two variables.
+
+3. Decision Tree Diagram (GraphViz)
+
+A simple representation of the CHAID tree structure.
+
+🧠 Key Insights
+
+NDVI categories (value_cat) are the primary driver of vegetation class.
+
+CHAID confirms a nearly monotonic relationship between NDVI and vegetation condition.
+
+The model is straightforward due to the nature of the dataset (pre-segmented NDVI bins).
+
+🚀 Technologies Used
+
+Python 3
+
+pandas
+
+numpy
+
+seaborn / matplotlib
+
+pandas-CHAID library
+
+🗂 Repository Structure
+│
+├── Final_chaid_Model.ipynb        # Complete CHAID model notebook
+├── response.json                  # Original MODIS dataset
+├── chaid_tree.png                 # Optional generated tree visualization
+├── README.md                      # Project documentation
+
+📘 How to Run
+
+Install dependencies:
+
+pip install pandas numpy seaborn matplotlib CHAID
+
+
+Open the notebook:
+
+jupyter notebook Final_chaid_Model.ipynb
+
+
+Run all cells to reproduce results.
+
+📢 Author
+
+Varun Kumar Reddy Gujja
+Data Analyst & Machine Learning Enthusiast
